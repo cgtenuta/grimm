@@ -301,7 +301,7 @@ static void ui_slab_make(uint32_t k, slab_t *S)
         if (eng == ENG_SAMPLE && k == 0u) { put_u(S->val, (uint32_t)v + 1u); return; }   /* (the name: the caption) */
         if (eng == ENG_VA && k == 0u) { put_s(S->val, v == WAVE_SUPER ? "SUPER" : v == WAVE_SQR ? "SQR" : "SAW"); return; }
         if (eng == ENG_PHYS && k == 0u) { put_s(S->val, md == PM_MEMB ? "MEMB" : md == PM_SYMP ? "SYMP" : N_PHYS_MODEL[md]); return; }
-        if (mx <= 24 || (eng == ENG_SAMPLE && k == 2u) || (eng == ENG_VOICE && k == 0u) ||
+        if (mx <= 24 || (eng == ENG_SAMPLE && k == 2u) || (eng == ENG_DRUM && k == 0u) ||
             (eng == ENG_PHYS && k == 1u && md == PM_SYMP)) {   /* (the source's own words) */
             sel_engine()->text(trk[sel].p[eng], k, t);
             ui_squeeze(S->val, t);
@@ -863,30 +863,23 @@ static void pic_sample(void)                    /* the slot's sample, the loop (
     }
 }
 
-static void pic_voice(void)                     /* a mouth singing VOWEL: A open, E wide, I narrow, O round, U small */
+static void pic_drum(void)                      /* the hit's envelope: DECAY its length, DRIVE gain into a flat-topped clip */
 {
-    static const int8_t RX[5] = {14, 17, 18, 9, 6}, RY[5] = {10, 6, 3, 10, 6};
-    const volatile int32_t *p = trk[sel].p[ENG_VOICE];
-    int32_t v = clamp(p[0], 0, 127) * 4 * 256 / 127, i = v >> 8, f = v & 255, x, y, rx, ry, sh = clamp(p[1], 0, 24) - 12;
-    char s[24], t[12];
-    if (i >= 4) i = 3, f = 256;
-    rx = (RX[i] * (256 - f) + RX[i + 1] * f) / 256 + sh / 4;
-    ry = (RY[i] * (256 - f) + RY[i + 1] * f) / 256;
-    formant_text(p, 0, t);
-    put_s(put_s(s, "VOWEL "), t);
-    formant_text(p, 1, t);
-    {
-        char r[16];
-        put_s(put_s(r, "SHIFT "), t);
-        ui_caption(s, r);
+    const volatile int32_t *p = trk[sel].p[ENG_DRUM];
+    int32_t len = 14 + clamp(p[1], 0, 127) * 40 / 127, drv = clamp(p[2], 0, 127), x, y;
+    char s[24], t[12], r[16];
+    drum_text(p, 0, t);
+    put_s(put_s(s, "TUNE "), t);
+    drum_text(p, 2, t);
+    put_s(put_s(r, "DRIVE "), t);
+    ui_caption(s, r);
+    for (x = 0; x < 54 && x < len; x++) {
+        int32_t a = 14 * (len - x) / len;
+        a = a * (64 + drv * 2) / 64;            /* the gain; the clip is the picture's own height */
+        if (a > 14) a = 14;
+        for (y = 15 - a; y <= 15 + a; y++)
+            if (y >= 0 && y < 30) ui_cell(x, y, (y == 15 - a || y == 15 + a) ? UI_L : ui_acc);
     }
-    for (y = 0; y < 30; y++)
-        for (x = 0; x < 54; x++) {
-            int32_t dx = x - 27, dy = y - 15, o = (dx * dx) * (ry + 3) * (ry + 3) + (dy * dy) * (rx + 3) * (rx + 3),
-                    oo = (rx + 3) * (rx + 3) * (ry + 3) * (ry + 3), n = (dx * dx) * ry * ry + (dy * dy) * rx * rx,
-                    nn = rx * rx * ry * ry;
-            if (o <= oo) ui_cell(x, y, n <= nn ? (dy > ry / 2 && dy * 3 > ry && n * 4 <= nn * 3 ? ui_acc : UI_K) : UI_L);
-        }
 }
 
 static void pic_wheel(void)                     /* the nine drawbars of the registration (PERC: its bar's tip) */
@@ -1519,7 +1512,7 @@ static void ui_pic_draw(void)
         case ENG_VA: pic_va(); return;
         case ENG_FM: pic_fm(); return;
         case ENG_SAMPLE: pic_sample(); return;
-        case ENG_VOICE: pic_voice(); return;
+        case ENG_DRUM: pic_drum(); return;
         case ENG_WHEEL: pic_wheel(); return;
         case ENG_PHYS: pic_phys(); return;
         default: pic_phase(); return;

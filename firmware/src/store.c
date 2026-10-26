@@ -67,8 +67,8 @@ static const uint16_t OBJ_VERS[NOBJV][6] = {{7, 52, 20, 260, 288, FM_ALL}, {6, 5
 #define SLS_P (4096u - OBJ_HDR - 4u)            /* the stream's bytes a sector */
 #define SLS_N 3u                                /* its sectors: 3, 4, 5 */
 enum { OBJ_WORK, OBJ_SLOTS };
-enum { CAT_DRONE, CAT_PAD, CAT_BELL, CAT_ORGAN, CAT_KEYS, CAT_BASS, CAT_TEXTURE, CAT_VOICE, CAT_OTHER, NCAT };
-static const char *const CAT_NAME[NCAT] = {"DRONE", "PAD", "BELL", "ORGAN", "KEYS", "BASS", "TEXTURE", "VOICE", "OTHER"};
+enum { CAT_DRONE, CAT_PAD, CAT_BELL, CAT_ORGAN, CAT_KEYS, CAT_BASS, CAT_TEXTURE, CAT_DRUM, CAT_OTHER, NCAT };
+static const char *const CAT_NAME[NCAT] = {"DRONE", "PAD", "BELL", "ORGAN", "KEYS", "BASS", "TEXTURE", "DRUM", "OTHER"};
 _Static_assert(NENG <= PK_ENG, "a save keeps every source's settings");
 _Static_assert(SND_N * SND_SIZE <= 4096u && OBJ_HDR + WORK_PK + 4u <= 4096u && 4u * SLOT_ALL <= SLS_N * SLS_P &&
                SAVE_NSECT >= 3u + SLS_N, "the save sectors");
@@ -76,7 +76,7 @@ _Static_assert(SND_N * SND_SIZE <= 4096u && OBJ_HDR + WORK_PK + 4u <= 4096u && 4
 /* the factory sounds: GR!MM's own (first drafts), records as the user's (no CRC: in the image, read-only), first in
  * each CATEGORY's list; their names beside them. Bytes: CATEGORY, its number, the source, its four, ENV (ATTACK, DECAY,
  * SUSTAIN, RELEASE), LATCH, CHORD (chord mode off: VOICING << 4 | CHORD TYPE), LFO (RATE, DEPTH, DESTINATION, SHAPE).
- * Sources: 0 VA (WAVE 0 SAW, 1 SQUARE, 2 SUPERSAW), 1 FM (PATCH 0 BELL, 1 ORGAN, 2 SOFT PAD, 3 REED), 3 VOICE, 4 WHEEL,
+ * Sources: 0 VA (WAVE 0 SAW, 1 SQUARE, 2 SUPERSAW), 1 FM (PATCH 0 BELL, 1 ORGAN, 2 SOFT PAD, 3 REED), 3 DRUM (TUNE, DECAY, DRIVE, SNAP; the note picks the drum), 4 WHEEL,
  * 5 PHYS (MODEL 0 MODAL, 1 STRING, 2 MEMBRANE, 3 SYMPATH), 6 PHASE. LFO DESTINATION 0 PITCH, 1 VOLUME, 3 .. 6 KNOB 1 .. 4;
  * SHAPE 0 SINE, 1 TRIANGLE, 5 RANDOM, 6 DRIFT */
 #define FSND(c, n, e, k0, k1, k2, k3, a, d, s, r, la, ch, lr, ld, lt, ls)                                              \
@@ -94,7 +94,7 @@ static const uint8_t SND_FACTORY[][SND_FSIZE] = {
     FSND(CAT_DRONE, 2, ENG_VA, 1, 5, 52, 30, 100, 90, 120, 110, 1, 0x05, 25, 30, 5, 0),     /* ABYSS */
     FSND(CAT_DRONE, 3, ENG_PHYS, 0, 100, 120, 60, 90, 90, 90, 100, 1, 0x05, 70, 20, 6, 5),  /* IRON LUNG */
     FSND(CAT_DRONE, 4, ENG_WHEEL, 0, 0, 10, 0, 70, 40, 60, 90, 1, 0x05, 15, 0, 1, 0),       /* TOMB HUM */
-    FSND(CAT_DRONE, 5, ENG_VOICE, 96, 6, 100, 90, 90, 90, 115, 100, 1, 0x05, 115, 30, 1, 5), /* STATIC PRAYER */
+    FSND(CAT_DRONE, 5, ENG_VA, 2, 110, 55, 70, 90, 90, 115, 100, 1, 0x05, 115, 30, 1, 5),   /* STATIC PRAYER */
     FSND(CAT_DRONE, 6, ENG_FM, 1, 50, 64, 12, 95, 90, 120, 100, 1, 0x05, 40, 0, 0, 0),      /* DEEP WELL */
     /* BELLS & METAL */
     FSND(CAT_BELL, 1, ENG_FM, 0, 64, 90, 10, 0, 120, 0, 110, 0, 0x00, 40, 0, 0, 0),         /* IRON BELL */
@@ -103,12 +103,12 @@ static const uint8_t SND_FACTORY[][SND_FSIZE] = {
     FSND(CAT_BELL, 4, ENG_FM, 0, 85, 30, 20, 80, 100, 70, 95, 0, 0x00, 40, 0, 0, 0),        /* GLASS HARP */
     FSND(CAT_BELL, 5, ENG_PHYS, 0, 70, 110, 45, 85, 90, 90, 100, 0, 0x00, 40, 0, 0, 0),     /* BOWED BELL */
     FSND(CAT_BELL, 6, ENG_FM, 0, 110, 20, 30, 0, 70, 0, 70, 0, 0x00, 40, 0, 0, 0),          /* SHRINE */
-    /* CHOIRS & VOICES */
-    FSND(CAT_VOICE, 1, ENG_VOICE, 0, 14, 30, 40, 85, 90, 90, 95, 0, 0x12, 100, 1, 0, 0),    /* CHOIR OF GHOSTS */
-    FSND(CAT_VOICE, 2, ENG_VOICE, 120, 4, 90, 45, 75, 80, 65, 90, 0, 0x05, 40, 0, 0, 0),    /* MONKS */
-    FSND(CAT_VOICE, 3, ENG_VOICE, 20, 14, 20, 110, 80, 90, 115, 95, 0, 0x13, 35, 10, 3, 6), /* WHISPER CHORUS */
-    FSND(CAT_VOICE, 4, ENG_VOICE, 64, 10, 45, 30, 90, 95, 65, 100, 0, 0x01, 25, 100, 3, 0), /* VIGIL */
-    FSND(CAT_VOICE, 5, ENG_FM, 2, 70, 64, 40, 85, 90, 115, 95, 0, 0x12, 95, 1, 0, 0),       /* HOLLOW HYMN */
+    /* DRUM KITS */
+    FSND(CAT_DRUM, 1, ENG_DRUM, 64, 45, 70, 90, 0, 64, 127, 110, 0, 0x00, 40, 0, 0, 0),     /* STOMP KIT */
+    FSND(CAT_DRUM, 2, ENG_DRUM, 56, 70, 100, 60, 0, 64, 127, 110, 0, 0x00, 40, 0, 0, 0),    /* IRON KIT */
+    FSND(CAT_DRUM, 3, ENG_DRUM, 64, 20, 30, 100, 0, 64, 127, 110, 0, 0x00, 40, 0, 0, 0),    /* DRY KIT */
+    FSND(CAT_DRUM, 4, ENG_DRUM, 70, 60, 127, 120, 0, 64, 127, 110, 0, 0x00, 40, 0, 0, 0),   /* CRUSH KIT */
+    FSND(CAT_DRUM, 5, ENG_DRUM, 60, 35, 90, 110, 0, 64, 127, 110, 0, 0x00, 40, 0, 0, 0),    /* SLAM KIT */
     /* ORGANS & KEYS */
     FSND(CAT_ORGAN, 1, ENG_WHEEL, 15, 0, 20, 10, 10, 20, 75, 60, 0, 0x00, 40, 0, 0, 0),     /* FUNERAL ORGAN */
     FSND(CAT_ORGAN, 2, ENG_WHEEL, 12, 0, 10, 0, 10, 90, 127, 55, 0, 0x00, 40, 0, 0, 0),     /* CHAPEL */
@@ -129,13 +129,13 @@ static const uint8_t SND_FACTORY[][SND_FSIZE] = {
     FSND(CAT_KEYS, 8, ENG_PHYS, 3, 0, 85, 0, 0, 90, 127, 60, 0, 0x00, 40, 0, 0, 0),         /* LUTE */
     FSND(CAT_KEYS, 9, ENG_PHASE, 3, 0, 40, 4, 80, 90, 70, 80, 0, 0x00, 100, 1, 0, 0),       /* CANDLE */
     /* TEXTURES */
-    FSND(CAT_TEXTURE, 1, ENG_VOICE, 96, 12, 0, 127, 100, 90, 120, 105, 1, 0x00, 30, 90, 4, 0), /* WIND THRU STONE */
+    FSND(CAT_TEXTURE, 1, ENG_VA, 2, 127, 100, 10, 100, 90, 120, 105, 1, 0x00, 30, 90, 4, 0), /* WIND THRU STONE */
 };
 static const char *const SND_FNAME[] = {
     "CRYPT PAD", "ASH VEIL", "FROZEN HALL", "LAST LIGHT", "MOSS", "BLACK VELVET",
     "MONK DRONE", "ABYSS", "IRON LUNG", "TOMB HUM", "STATIC PRAYER", "DEEP WELL",
     "IRON BELL", "FUNERAL CHIME", "RUST GONG", "GLASS HARP", "BOWED BELL", "SHRINE",
-    "CHOIR OF GHOSTS", "MONKS", "WHISPER CHORUS", "VIGIL", "HOLLOW HYMN",
+    "STOMP KIT", "IRON KIT", "DRY KIT", "CRUSH KIT", "SLAM KIT",
     "FUNERAL ORGAN", "CHAPEL", "DEAD HARPSICHORD", "MUSIC BOX", "CATHEDRAL KEYS", "BONE PIANO",
     "HAUNTED STRINGS", "DUNGEON BRASS", "WAR HORN", "CELLO GRAVE", "SORROW STRINGS",
     "WRAITH", "LANTERN", "SPIDER PLUCK", "LUTE", "CANDLE",

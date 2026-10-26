@@ -15,6 +15,22 @@ static inline int32_t mulq16(int32_t a, uint32_t k)
 }
 static inline int32_t clamp(int32_t v, int32_t lo, int32_t hi) { return v < lo ? lo : v > hi ? hi : v; }
 
+static inline int32_t sine_i(uint32_t ph)       /* sin, Q15, a full cycle over 2^32 (Felucca's dsp.c, SINE[1025]) */
+{
+    uint32_t i = ph >> 22;
+    int32_t a = SINE[i], b = SINE[(i + 1u) & 1023u];
+    return a + (((b - a) * (int32_t)((ph >> 7) & 0x7FFFu)) >> 15);
+}
+static inline uint32_t noise32(int32_t *st)     /* xorshift32 (Felucca's dsp.c) */
+{
+    uint32_t s = (uint32_t)*st;
+    s ^= s << 13;
+    s ^= s >> 17;
+    s ^= s << 5;
+    *st = (int32_t)s;
+    return s;
+}
+
 /* polyBLEP residual (Q15) around a wrap of a phase accumulator */
 static inline int32_t blep(uint32_t ph, uint32_t inc)
 {
