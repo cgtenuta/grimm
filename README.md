@@ -43,6 +43,9 @@ If GR!MM isn't on the hub yet, or you want to install a release file by hand: do
 py tools\fm1_install.py grimm.fwsc
 ```
 
+No Python? Open `web/installer.html` in Chrome or Edge (one file, works offline), drop `grimm.fwsc` on it, press Connect,
+then Install. It does the same update over Web MIDI.
+
 Your sounds, slots A–D, settings and samples stay on the FM-1 when you update. If anything goes wrong, the hub's
 **Rescue** page brings a stuck FM-1 back.
 
