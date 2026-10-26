@@ -16,8 +16,8 @@ Free and open source (GPL-3.0). Unofficial firmware, not made or endorsed by M-V
 ## What's inside
 
 - **4 tracks**, 6 voices shared between them
-- **7 sources:** VA (analog-style, with supersaw), FM (6-operator, fully editable), SAMPLE (a sample played like a tape loop), VOICE (formant choir), WHEEL (tonewheel organ), PHYS (bowed and struck physical models), PHASE (CZ-style phase distortion)
-- **40 factory sounds** in 8 categories (PAD, DRONE, BELL, VOICE, ORGAN, KEYS, OTHER, TEXTURE), plus 64 slots for your own, with names you give them in the editor
+- **7 sources:** VA (analog-style, with supersaw), FM (6-operator, fully editable), SAMPLE (a sample played like a tape loop), DRUM (synthesized kit, the note picks the drum), MONO (bass and lead: saw / pulse, sub, four-pole filter), DUAL (two oscillators: mix, sync, ring, FM), PHASE (CZ-style phase distortion); a per-track DRIVE distortion on MIXER 2
+- **46 factory sounds** in 9 categories (PAD, DRONE, BELL, DRUM, MONO, KEYS, BASS, OTHER, TEXTURE), plus 64 slots for your own, with names you give them in the editor
 - **4 factory samples** (URCHIN, LEAVE, NIKOLAI, M-SOFT; CC0) in the four sample slots, which you can replace with your own (6.6 s each)
 - **Effects:** TAPE (wow, saturation, hiss over the whole mix), GRAIN (a granular cloud with FREEZE), DELAY (tape echo) and SPACE (reverb up to ~32 s, and infinite)
 - **Per track:** envelope, LFO, filter, scale snapping, one-key chords, arpeggiator, latch for drones

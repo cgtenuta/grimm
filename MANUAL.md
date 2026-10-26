@@ -56,7 +56,7 @@ Press **HOME** again for the mixer pages:
 | Page | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
 |---|---|---|---|---|
 | MIXER 1 | LEVEL | DLY SEND | REV SEND | GRAIN SEND |
-| MIXER 2 | PAN | | | |
+| MIXER 2 | PAN | DRIVE | | |
 
 ---
 
@@ -68,7 +68,7 @@ Press **HOME** again for the mixer pages:
 
 | KNOB 1 | KNOB 2 |
 |---|---|
-| SOURCE: VA, FM, SAMPLE, VOICE, WHEEL, PHYS, PHASE | LATCH: OFF / ON |
+| SOURCE: VA, FM, SAMPLE, DRUM, MONO, DUAL, PHASE | LATCH: OFF / ON |
 
 - **LATCH OFF:** a note sounds while you hold the key, like a normal keyboard.
 - **LATCH ON:** press once to start a note, press again to stop it. For drones.
@@ -82,12 +82,18 @@ Press **HOME** again for the mixer pages:
 | **VA** | WAVE | DETUNE | CUTOFF | RESONANCE | Analog-style: saw, square, supersaw |
 | **FM** | PATCH | BRIGHT | DECAY | DETUNE | 6-operator FM; PATCH loads a starting point (BELL, ORGAN, SOFT PAD, REED) |
 | **SAMPLE** | SLOT | START | LENGTH | REVERSE | A sample slot (1–4) played as a loop; the key sets the speed, like tape |
-| **VOICE** | VOWEL | SHIFT | BUZZ | BREATH | Sung vowels; BREATH adds air and noise |
-| **WHEEL** | DRAWBARS | PERC | CLICK | DRIVE | Tonewheel organ with rotary speaker |
-| **PHYS** | MODEL | STRUCTURE | DAMP | BOW | Bowed and struck strings, bars, plates, membranes |
+| **DRUM** | TUNE | DECAY | DRIVE | SNAP | Synthesized drums: the **note picks the drum** (see below) |
+| **MONO** | WAVE | SUB | CUTOFF | RESONANCE | Bass and lead: saw / pulse blend, a sub-octave square, a four-pole filter the envelope opens |
+| **DUAL** | WAVE | OSC 2 | MODE | AMOUNT | Two oscillators: MIX, SYNC, RING or FM. No filter of its own: use HOME's CUTOFF and RESONANCE |
 | **PHASE** | WAVE | WAVE2 | DCW | DETUNE | CZ-style phase distortion |
 
-On PHYS, STRUCTURE and BOW change meaning with the model; the screen shows the current name.
+**DRUM kit map.** On a DRUM track the note's pitch class (any octave) picks the drum: C kick, C# hard kick, D snare, D# clap, E rim, F low tom, F# closed hat, G mid tom, G# open hat, A high tom, A# metal, B noise. TUNE sets the pitch (±12 semitones), DECAY how long it rings, DRIVE clips the raw sound before the decay, SNAP the attack (the kick's click and sweep, the snare's noise, the brightness of the clap, rim and metal). A drum ends by itself; give a DRUM sound SUSTAIN 100 % and a long RELEASE so a key let go doesn't shorten it.
+
+**MONO** has no portamento and is polyphonic like every source: play one note at a time for the mono feel. The filter follows the track's ENV, so a low SUSTAIN with a short DECAY plucks like an acid bass.
+
+**DUAL** modes: MIX adds oscillator 2 (a few cents apart in unison); SYNC restarts oscillator 2 with oscillator 1 (sweep OSC 2 for the classic sound; a little aliased, by design); RING multiplies the two; FM lets oscillator 2 bend a sine, the index up to 3 cycles. AMOUNT is oscillator 2's level (MIX), the share of the effect (SYNC, RING) or the FM index.
+
+**MIXER 2's DRIVE** (per track, 0 = off) distorts the track after its filter: soft clipping that turns hard as it rises, then a wavefolder over the last third. Use it on the bass, or on a whole drum track.
 
 The four sample slots come with GR!MM's factory samples: **1 URCHIN, 2 LEAVE, 3 NIKOLAI, 4 M-SOFT**. Replace them with your own from the [editor](#15-the-editor) (see also [Good to know](#14-good-to-know)).
 
@@ -314,10 +320,11 @@ Turn **PRESETS** to step through them by category, then your own.
 | PAD | Crypt Pad, Ash Veil, Frozen Hall, Last Light, Moss, Black Velvet |
 | DRONE | Monk Drone, Abyss, Iron Lung, Tomb Hum, Static Prayer, Deep Well |
 | BELL | Iron Bell, Funeral Chime, Rust Gong, Glass Harp, Bowed Bell, Shrine |
-| VOICE | Choir of Ghosts, Monks, Whisper Chorus, Vigil, Hollow Hymn |
-| ORGAN | Funeral Organ, Chapel |
+| DRUM | Stomp Kit, Iron Kit, Dry Kit, Crush Kit, Slam Kit |
+| MONO | Sub Punch, Acid Saw |
 | KEYS | Dead Harpsichord, Music Box, Cathedral Keys, Bone Piano, Wraith, Lantern, Spider Pluck, Lute, Candle |
 | OTHER | Haunted Strings, Dungeon Brass, War Horn, Cello Grave, Sorrow Strings |
+| BASS | Front Bass, Acid Line, Sync Lead, Ring Clank, FM Stab, Wide Saw |
 | TEXTURE | Wind Thru Stone |
 
 ---

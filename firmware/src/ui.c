@@ -276,7 +276,7 @@ static void ui_slab_make(uint32_t k, slab_t *S)
 {
     volatile int32_t *p = knob_param(page, k);
     const char *name = knob_name(page, k);
-    int32_t v = p ? *p : 0, mx = knob_max(page, k), md = (int32_t)phys_model(trk[sel].p[ENG_PHYS]);
+    int32_t v = p ? *p : 0, mx = knob_max(page, k);
     uint32_t eng = sel_eng();
     char t[32];
     S->acc = S->dim = 0;
@@ -296,13 +296,10 @@ static void ui_slab_make(uint32_t k, slab_t *S)
     if (page == PG_GRID && k == 0u && v) S->fill = (uint8_t)(1 + (v - 1) * 7 / 126);   /* (a note: at least 1) */
     switch (page) {
     case PG_SOUND:
-        if (eng == ENG_PHYS && k == 1u) put_s(S->lab, md == PM_MEMB ? "HARM" : md == PM_SYMP ? "CHORD" : "STRUCT");
-        if (eng == ENG_PHYS && k == 3u) put_s(S->lab, md == PM_MEMB ? "BEND" : md == PM_SYMP ? "BUZZ" : "BOW");
         if (eng == ENG_SAMPLE && k == 0u) { put_u(S->val, (uint32_t)v + 1u); return; }   /* (the name: the caption) */
         if (eng == ENG_VA && k == 0u) { put_s(S->val, v == WAVE_SUPER ? "SUPER" : v == WAVE_SQR ? "SQR" : "SAW"); return; }
-        if (eng == ENG_PHYS && k == 0u) { put_s(S->val, md == PM_MEMB ? "MEMB" : md == PM_SYMP ? "SYMP" : N_PHYS_MODEL[md]); return; }
         if (mx <= 24 || (eng == ENG_SAMPLE && k == 2u) || (eng == ENG_DRUM && k == 0u) ||
-            (eng == ENG_PHYS && k == 1u && md == PM_SYMP)) {   /* (the source's own words) */
+            (eng == ENG_MONO && k == 0u) || (eng == ENG_DUAL && k == 1u)) {   /* (the source's own words) */
             sel_engine()->text(trk[sel].p[eng], k, t);
             ui_squeeze(S->val, t);
             return;
@@ -385,6 +382,7 @@ static void ui_slab_make(uint32_t k, slab_t *S)
         S->acc = k == sel;
         return;
     case PG_MIX2:
+        if (k == 1u) { ui_3(S->val, ui_pc(v)); return; }
         if (v == 64) put_s(S->val, "C");
         else put_u(put_s(S->val, v < 64 ? "L" : "R"), (uint32_t)(v < 64 ? 64 - v : v - 64));
         return;
@@ -882,58 +880,49 @@ static void pic_drum(void)                      /* the hit's envelope: DECAY its
     }
 }
 
-static void pic_wheel(void)                     /* the nine drawbars of the registration (PERC: its bar's tip) */
+static void pic_mono(void)                      /* two cycles of the oscillator: WAVE's saw / pulse blend, the SUB under it */
 {
-    static const char FOOT[9] = {'M', 'M', 'L', 'L', 'D', 'L', 'D', 'D', 'L'};   /* brown, white, black as greys */
-    const volatile int32_t *p = trk[sel].p[ENG_WHEEL];
-    uint32_t reg = (uint32_t)clamp(p[0], 0, 15), perc = (uint32_t)clamp(p[1], 0, 6), k;
-    int32_t pk = perc ? (int32_t)(3u + ((perc - 1u) & 1u)) : -1, y;
-    ui_caption(N_DRW_REG[reg], perc ? N_DRW_PERC[perc] : "PERC OFF");
-    for (k = 0; k < 9u; k++) {
-        int32_t lv = DRW_REG[reg][k] - '0', x = 5 + (int32_t)k * 5;
-        uint16_t c = FOOT[k] == 'M' ? UI_M : FOOT[k] == 'L' ? UI_L : UI_D;
-        if (perc && k == 8u) lv = 0;            /* (PERC on: the 1' bar is off) */
-        ui_rect(PX0 + x * 4, PY0, 16, 2, UI_D);
-        for (y = 0; y < lv * 3; y++)
-            ui_rect(PX0 + x * 4 + 2, PY0 + 2 + y * 4, 12, 4, c);
-        ui_rect(PX0 + x * 4, PY0 + 2 + lv * 12, 16, 6, (int32_t)k == pk ? ui_acc : c);
+    const volatile int32_t *p = trk[sel].p[ENG_MONO];
+    int32_t w = clamp(p[0], 0, 127), sb = clamp(p[1], 0, 127), x, y, prev = 0;
+    char s[24], t[12], r[16];
+    mono_text(p, 0, t);
+    put_s(put_s(s, "WAVE "), t);
+    mono_text(p, 2, t);
+    put_s(put_s(r, "CUTOFF "), t);
+    ui_caption(s, r);
+    for (x = 0; x < 54; x++) {
+        int32_t ph = (x * 2 % 54) * 256 / 54, sw = 14 - 28 * ph / 256, pl = ph < 128 ? 14 : -14,
+                sq = (x % 54) < 27 ? 4 : -4, o = (sw * (127 - w) + pl * w) / 127 + sq * sb / 127, yy = 15 - o;
+        yy = clamp(yy, 0, 29);
+        for (y = yy < prev ? yy : prev; y <= (yy > prev ? yy : prev); y++)   /* (the edges joined) */
+            ui_cell(x, y, ui_acc);
+        prev = yy;
     }
 }
 
-static void pic_phys(void)                      /* the model's body: a bar, a string (and its sympathetic ones), a drum */
+static void pic_dual(void)                      /* the two oscillators' waves, the second as many times faster as OSC 2 says */
 {
-    const volatile int32_t *p = trk[sel].p[ENG_PHYS];
-    uint32_t md = phys_model(p);
-    int32_t x, y, st = clamp(p[1], 0, 127), bw = clamp(p[3], 0, 127);
-    char r[16];
-    phys_text(p, 3, r);
-    ui_caption(N_PHYS_MODEL[md], r);
-    if (md == PM_MODAL) {                       /* a bar on two cords (its nodes), struck or bowed at its end */
-        for (x = 6; x < 48; x++)
-            for (y = 12; y < 18; y++) ui_cell(x, y, y == 12 ? UI_L : UI_M);
-        for (x = 0; x < 3; x++) ui_cell(15 + x * (12 + st / 32), 19, UI_D);   /* (STRUCTURE spreads the partials) */
-        ui_cell(15, 9, UI_D), ui_cell(15, 10, UI_D), ui_cell(15, 11, UI_D);
-        ui_cell(38, 9, UI_D), ui_cell(38, 10, UI_D), ui_cell(38, 11, UI_D);
-        ui_cell(47, bw ? 15 : 21, ui_acc), ui_cell(48, bw ? 15 : 22, ui_acc);
-    } else if (md == PM_MEMB) {                 /* a drum head and its rings */
-        for (y = 0; y < 30; y++)
-            for (x = 0; x < 54; x++) {
-                int32_t dx = x - 27, dy = (y - 15) * 2, d = dx * dx + dy * dy;
-                if (d <= 22 * 22) ui_cell(x, y, d >= 20 * 20 ? UI_L : (d >= 11 * 11 && d < 13 * 13) || d < 4 * 4 ? UI_M : UI_D);
+    const volatile int32_t *p = trk[sel].p[ENG_DUAL];
+    int32_t wave = clamp(p[0], 0, DUAL_NWAVE - 1), semis = dual_semis(p[1]), r, x, row;
+    char s[24], t[12], q[16];
+    dual_text(p, 2, t);
+    put_s(put_s(s, "MODE "), t);
+    dual_text(p, 1, t);
+    put_s(put_s(q, "OSC2 "), t);
+    ui_caption(s, q);
+    r = 256 * 2;                                /* (cycles over 54 cells, times 256: OSC 1's two) */
+    for (row = 0; row < 2; row++) {
+        int32_t cy = row ? 22 : 8, prev = 0;
+        uint32_t spd = row ? (uint32_t)(r * (semis >= 0 ? 1 << (semis / 12) : 1) / (semis >= 0 ? 1 : 1 << (-semis / 12))) : (uint32_t)r;
+        for (x = 0; x < 54; x++) {
+            int32_t t8 = (int32_t)(((uint32_t)x * spd / 54u) & 255u), o;
+            o = wave == DUAL_SQR ? (t8 < 128 ? 6 : -6) : wave == DUAL_TRI ? (t8 < 128 ? t8 * 12 / 128 - 6 : 6 - (t8 - 128) * 12 / 128) : 6 - t8 * 12 / 255;
+            {
+                int32_t y, lo = o < prev ? o : prev, hi = o > prev ? o : prev;
+                for (y = lo; y <= hi; y++) ui_cell(x, cy - y, row ? ui_acc : UI_L);
             }
-        ui_cell(27 + st / 16, 15, ui_acc);
-    } else {                                    /* a string, its swing (and SYMPATH's three strings below) */
-        for (x = 4; x < 50; x++) {
-            int32_t a = (sine_i((uint32_t)(x - 4) * 46684427u) * (2 + bw / 32)) >> 15;   /* (half a sine over 46) */
-            ui_cell(x, 12 - (a < 0 ? -a : a), UI_L);
-            ui_cell(x, 12, UI_D);
+            prev = o;
         }
-        ui_cell(4, 11, UI_M), ui_cell(4, 12, UI_M), ui_cell(4, 13, UI_M);
-        ui_cell(49, 11, UI_M), ui_cell(49, 12, UI_M), ui_cell(49, 13, UI_M);
-        ui_cell(4 + 46 * clamp(st, 0, 127) / 254, 14, ui_acc);
-        if (md == PM_SYMP)
-            for (y = 0; y < 3; y++)
-                for (x = 8; x < 46; x++) ui_cell(x, 20 + y * 3, UI_M);
     }
 }
 
@@ -1011,7 +1000,7 @@ static void pic_env(void)                       /* Env: the shape of the track's
 static void pic_mix(void)                       /* FxTrack: the four tracks' columns, LEVEL and the sends (MIXER 2: PAN) */
 {
     int32_t t, m, j;
-    ui_caption(page == PG_MIX1 ? "LEVEL DLY REV GRAIN" : "PAN", 0);
+    ui_caption(page == PG_MIX1 ? "LEVEL DLY REV GRAIN" : "PAN  DRIVE", 0);
     for (t = 0; t < (int32_t)NT; t++) {
         int32_t x0 = PX0 + t * 54 + 4;
         char lab[3] = {'T', (char)('1' + t), 0};
@@ -1026,6 +1015,8 @@ static void pic_mix(void)                       /* FxTrack: the four tracks' col
             int32_t pp = (clamp(trk[t].pan, 0, 127) * 6 + 63) / 127;
             for (j = 0; j < 7; j++)
                 ui_rect(x0 + j * 7, 80, 6, 20, j == pp ? UI_L : j == 3 ? UI_M : UI_D);
+            ui_rect(x0, 112, 49, 8, UI_D);
+            ui_rect(x0, 112, clamp(trk[t].drive, 0, 127) * 49 / 127, 8, UI_L);   /* DRIVE: a bar */
         }
         ui_text(x0 + 14, 145, lab, 1, t == (int32_t)sel ? ui_acc : UI_M);
     }
@@ -1513,8 +1504,8 @@ static void ui_pic_draw(void)
         case ENG_FM: pic_fm(); return;
         case ENG_SAMPLE: pic_sample(); return;
         case ENG_DRUM: pic_drum(); return;
-        case ENG_WHEEL: pic_wheel(); return;
-        case ENG_PHYS: pic_phys(); return;
+        case ENG_MONO: pic_mono(); return;
+        case ENG_DUAL: pic_dual(); return;
         default: pic_phase(); return;
         }
     case PG_SOURCE: pic_source(); return;

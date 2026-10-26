@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments (env_tick, amp_at)
  * GR!MM: Copyright (C) 2026 GR!MM */
 /* GR!MM's tracks and voices.
- *   NT tracks, each with a source (an engine: VA, FM, SAMPLE, VOICE, WHEEL, PHYS, PHASE), every
+ *   NT tracks, each with a source (an engine: VA, FM, SAMPLE, DRUM, MONO, DUAL, PHASE), every
  *   engine's four parameters, LEVEL, PAN and the
  *   sends DLY, REV and GRN
  *   (the main loop writes them, 32-bit volatiles: docs/RULES.md);
@@ -29,7 +29,7 @@
 #define REL_END (1 << 15)                       /* Q24: a release ends here, 54 dB down (a voice's last ~16 LSB, -66 dBFS;
                                                  * Felucca's 1 << 12 rendered the last ~2.7 s of a 6 s release unheard) */
 enum { ST_OFF, ST_ATK, ST_SUS, ST_REL, ST_FADE };
-enum { ENG_VA, ENG_FM, ENG_SAMPLE, ENG_DRUM, ENG_WHEEL, ENG_PHYS, ENG_PHASE, NENG };
+enum { ENG_VA, ENG_FM, ENG_SAMPLE, ENG_DRUM, ENG_MONO, ENG_DUAL, ENG_PHASE, NENG };
 
 typedef struct {
     volatile uint32_t req;                      /* main loop: + 1 after want_* */
@@ -67,6 +67,7 @@ typedef struct {
     volatile int32_t fm_alg, fm_fb, fmo[6][5];  /* FM: the track's own patch (FM ALGO, FM OP): ALGO 0..31, FEEDBACK
                                                  * 0..7; an operator's (OP1 first) RATIO 0..31, FINE, LEVEL, ATTACK,
                                                  * DECAY 0..99 (fm.c; a built-in PATCH's: fm_builtin) */
+    volatile int32_t drive;                     /* MIXER 2: DRIVE 0..127, the track's distortion (grimm.c trk_drive; 0: off) */
 } track_t;
 #ifndef DEF_ENG
 #define DEF_ENG ENG_VA                          /* (the host tests set the tracks' first source) */
@@ -74,16 +75,25 @@ typedef struct {
 #ifndef DEF_DRUM
 #define DEF_DRUM {64, 50, 40, 60}
 #endif
+#ifndef DEF_MONO
+#define DEF_MONO {0, 40, 60, 40}
+#endif
+#ifndef DEF_DUAL
+#define DEF_DUAL {0, 64, 0, 80}
+#endif
+#ifndef DEF_DRIVE
+#define DEF_DRIVE 0
+#endif
 #ifndef DEF_REV
 #define DEF_REV 100
 #endif
-#define TRK_DEF {DEF_ENG, {{0, 10, 90, 30}, {0, 64, 64, 20}, {0, 0, 127, 0}, DEF_DRUM, {4, 0, 40, 0}, {0, 64, 80, 64}, {0, 0, 60, 0}}, 100, 0, DEF_REV, 0, 64, 0, \
-                 {22, 85, 127, 89}, 0, 0, 0, 0, 0, 4, 1, 50, 64, 0, 0, 0, 127, 0, 100, 0, 0, {{0}}}
+#define TRK_DEF {DEF_ENG, {{0, 10, 90, 30}, {0, 64, 64, 20}, {0, 0, 127, 0}, DEF_DRUM, DEF_MONO, DEF_DUAL, {0, 0, 60, 0}}, 100, 0, DEF_REV, 0, 64, 0, \
+                 {22, 85, 127, 89}, 0, 0, 0, 0, 0, 4, 1, 50, 64, 0, 0, 0, 127, 0, 100, 0, 0, {{0}}, DEF_DRIVE}
 static track_t trk[NT] = {TRK_DEF, TRK_DEF, TRK_DEF, TRK_DEF};   /* VA: SAW, DETUNE 10, CUTOFF 90, RESONANCE 30
                                                  * (Felucca's ANALOG); FM: BELL as made, DETUNE 20; SAMPLE: slot 1,
                                                  * the whole sample, forward; VOICE: A, SHIFT 0, BUZZ 64, BREATH 10
-                                                 * (Felucca's); DRUM: TUNE centre, DECAY 50, DRIVE 40, SNAP 60; WHEEL: 3BAR, PERC OFF, CLICK 40, DRIVE 0 (Felucca's);
-                                                 * PHYS: MODAL, STRUCTURE 64, DAMP 80, bowed at 50 %; PHASE: SAW,
+                                                 * (Felucca's); DRUM: TUNE centre, DECAY 50, DRIVE 40, SNAP 60; MONO: SAW, SUB 31 %, CUTOFF 60, RESONANCE 40;
+                                                 * DUAL: SAW, OSC 2 in unison, MIX, 63 %; PHASE: SAW,
                                                  * DCW 60, one line (Felucca's); LEVEL 100,
                                                  * DLY 0, REV 100, GRN 0, PAN the middle; LATCH OFF; ENV: ATTACK
                                                  * 5 ms, DECAY 1 s, SUSTAIN 100 %, RELEASE 2 s; chord mode OFF (SCALE, CLOSE); ARP OFF (UP, 1/16,
@@ -135,11 +145,11 @@ static inline uint32_t vinc(int32_t p16)
 #include "fm.c"
 #include "sampler.c"
 #include "drum.c"
-#include "wheel.c"
-#include "phys.c"
+#include "mono.c"
+#include "dual.c"
 #include "phase.c"
-static const engine_t *const ENGINES[NENG] = {&VA_ENGINE, &FM_ENGINE, &SAMPLE_ENGINE, &DRUM_ENGINE, &WHEEL_ENGINE,
-                                              &PHYS_ENGINE, &PHASE_ENGINE};   /* (by ENG_) */
+static const engine_t *const ENGINES[NENG] = {&VA_ENGINE, &FM_ENGINE, &SAMPLE_ENGINE, &DRUM_ENGINE, &MONO_ENGINE,
+                                              &DUAL_ENGINE, &PHASE_ENGINE};   /* (by ENG_) */
 
 /* main loop: voice v plays note for track t (a sounding voice fades out first; the same note of the same track
  * sounding goes on up from where it is) */

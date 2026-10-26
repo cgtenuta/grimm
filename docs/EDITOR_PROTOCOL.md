@@ -123,9 +123,9 @@ shows it (ASCII, up to 15; none: nothing, HOME shows the source).
 | Byte | |
 | --- | --- |
 | 0 | `0x54` ("T") |
-| 1 | CATEGORY: 0 DRONE, 1 PAD, 2 BELL, 3 ORGAN, 4 KEYS, 5 BASS, 6 TEXTURE, 7 VOICE, 8 OTHER |
+| 1 | CATEGORY: 0 DRONE, 1 PAD, 2 BELL, 3 MONO, 4 KEYS, 5 BASS, 6 TEXTURE, 7 DRUM, 8 OTHER |
 | 2 | its number in the category (the name "DRONE 03"), 1–99 |
-| 3 | the source: 0 VA, 1 FM, 2 SAMPLE, 3 VOICE, 4 WHEEL, 5 PHYS, 6 PHASE |
+| 3 | the source: 0 VA, 1 FM, 2 SAMPLE, 3 DRUM, 4 MONO, 5 DUAL, 6 PHASE |
 | 4–7 | the source's four knobs (SOUND page), each 0..its range |
 | 8–11 | ENV: ATTACK, DECAY, SUSTAIN, RELEASE (0–127) |
 | 12 | LATCH (0 / 1) |
@@ -138,8 +138,8 @@ shows it (ASCII, up to 15; none: nothing, HOME shows the source).
 An empty slot is 64 × `0xFF`. A PUT of 64 × `0xFF` empties the slot.
 
 Source knob ranges: VA WAVE 0–2, DETUNE, CUTOFF, RESONANCE 0–127. FM PATCH 0–3, BRIGHT, DECAY, DETUNE 0–127. SAMPLE
-SLOT 0–3, START, LENGTH 0–127, REVERSE 0–1. VOICE VOWEL 0–127, SHIFT 0–24, BUZZ, BREATH 0–127. WHEEL DRAWBARS 0–15,
-PERC 0–6, CLICK, DRIVE 0–127. PHYS MODEL 0–3, STRUCTURE, DAMP, BOW 0–127. PHASE WAVE 0–7, WAVE2 0–8, DCW, DETUNE
+SLOT 0–3, START, LENGTH 0–127, REVERSE 0–1. DRUM TUNE, DECAY, DRIVE, SNAP 0–127. MONO WAVE, SUB, CUTOFF, RESONANCE 0–127.
+DUAL WAVE 0–2, OSC 2 0–127, MODE 0–3, AMOUNT 0–127. PHASE WAVE 0–7, WAVE2 0–8, DCW, DETUNE
 0–127.
 
 **The chord byte:** bit 7 chord mode on; bits 4–6 VOICING (0 CLOSE, 1 OPEN, 2 SPREAD, 3 +OCT, 4 DROP); bits 0–3 CHORD

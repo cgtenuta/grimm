@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* GR!MM: an FM-1 firmware, built on Dinghy (zvenson). Step 26a2: four tracks (sources:
- * VA, FM, SAMPLE over uploaded samples, VOICE, WHEEL, PHYS, PHASE), effects under FX (TAPE over the whole mix,
+ * VA, FM, SAMPLE over uploaded samples, DRUM, MONO, DUAL, PHASE), effects under FX (TAPE over the whole mix,
  * GRAIN, DELAY, SPACE), the mixer under HOME.
  * GR!MM changes Copyright (C) 2026 GR!MM; Dinghy by zvenson; the platform by Felucca / SLOOP; the DSP
  * (dsp.c), the VA engine (analog.c), the FM engine (fm.c, around msfa: fm6_core.c, Apache-2.0), the GRAIN effect's grain
@@ -20,8 +20,8 @@
  *              "BUTTON > PAGE" (and the track, FREEZE). Buttons with a hold function (SEL GLO HOME SAVE ARP SEQ FX)
  *              change page when let go. Pages not built yet show their knobs' names and NOT BUILT YET.
  *   EDIT       SOUND (KNOB 1..4: the source's four: VA: WAVE saw / square / supersaw, DETUNE, CUTOFF, RESONANCE;
- *              FM: PATCH, BRIGHT, DECAY, DETUNE; SAMPLE: SLOT, START, LENGTH, REVERSE; VOICE: VOWEL, SHIFT, BUZZ,
- *              BREATH; WHEEL: DRAWBARS, PERC, CLICK, DRIVE; PHYS: MODEL, STRUCTURE, DAMP, BOW; PHASE: WAVE, WAVE2,
+ *              FM: PATCH, BRIGHT, DECAY, DETUNE; SAMPLE: SLOT, START, LENGTH, REVERSE; DRUM: TUNE, DECAY, DRIVE,
+ *              SNAP; MONO: WAVE, SUB, CUTOFF, RESONANCE; DUAL: WAVE, OSC 2, MODE, AMOUNT; PHASE: WAVE, WAVE2,
  *              DCW, DETUNE) -> SOURCE (SOURCE: its notes go over, faded, each source's settings kept; LATCH: OFF /
  *              ON, ON -> OFF releases the track's notes); an FM track: SOUND -> FM ALGO (ALGO: the 32 algorithms,
  *              FEEDBACK, OP 1..6, FINE: the operator's) -> FM OP (that operator's RATIO 0.5 .. 31, LEVEL, ATTACK,
@@ -188,6 +188,23 @@ static void trk_filter(uint32_t t, int32_t *x, uint32_t n)
     }
     tf_cs[t] = cs, tf_ic[t][0] = ic1, tf_ic[t][1] = ic2;
 }
+/* the track's DRIVE (MIXER 2): distortion after the track filter, before LEVEL, PAN and the sends. 0 is off. The gain rises
+ * from 1x to ~17x into dsp.c's tanh (soft, then a hard clip); above 96 the signal also folds back on itself (a triangle
+ * wavefolder, crossfaded in over the last 31 steps), a harsher, buzzier top. The input is held to +-4x the track's scale
+ * first, so a chord's sum can't overflow. */
+static void trk_drive(int32_t *x, uint32_t n, int32_t d)
+{
+    int32_t gain = 256 + ((d * d) >> 2), w = d > 96 ? (d - 96) * 1024 / 31 : 0;
+    uint32_t i;
+    for (i = 0; i < n; i++) {
+        int32_t xc = clamp(x[i], -131071, 131071), y = softclip((xc * gain) >> 8);
+        if (w) {
+            int32_t m = (((xc * (gain >> 1)) >> 8) + 32768) & 131071, f = (m < 65536 ? m - 32768 : 98304 - m);
+            y += ((f - y) * w) >> 10;
+        }
+        x[i] = y;
+    }
+}
 static int32_t fx_send(uint32_t t, int32_t s)   /* a send (0..127) times FX (0..200 %): x 258 its Q15 gain, to ~2x */
 {
     return s * 258 * clamp(trk[t].fx, 0, 200) / 100;
@@ -209,6 +226,7 @@ static void mix_tracks(int32_t *out, uint32_t used, uint32_t n)   /* the soundin
         g[3] = mulq15(lv, pf_held >> PF_REV & 1u ? 127 * 258 : fx_send(t, lfo_move(t, LD_REV, clamp(trk[t].rev, 0, 127), 127)));
         g[4] = mulq15(lv, fx_send(t, lfo_move(t, LD_GRAIN, clamp(trk[t].grn, 0, 127), 127)));
         if (used >> t & 1u) trk_filter(t, x, n);
+        if ((used >> t & 1u) && trk[t].drive > 0) trk_drive(x, n, clamp(trk[t].drive, 0, 127));
         else tf_on[t] = 0;                      /* (silent: from bypassed when it sounds again) */
         if (used >> t & 1u) {
             uint32_t pk = 0, a;
@@ -652,7 +670,7 @@ static const page_t PAGES[NPAGE] = {
     {"HOME", BTN_HOME, 1, 1, 1, {"VOLUME", "CUTOFF", "RESONANCE", "FX"}},   /* (the track's: its LEVEL, its filter, its
                                                  * sends together; its sound's name in the header) */
     {"MIXER 1", BTN_HOME, 1, 1, 1, {"LEVEL", "DLY SEND", "REV SEND", "GRAIN SEND"}},
-    {"MIXER 2", BTN_HOME, 1, 1, 1, {"PAN", "", "", ""}},
+    {"MIXER 2", BTN_HOME, 1, 1, 1, {"PAN", "DRIVE", "", ""}},
     {"SYSTEM", BTN_HOME, 1, 0, 0, {"COLOUR", "MIDI CHANNEL", "TUNE", "SCREEN OFF"}},   /* (HOME held; HOME again: */
     {"SYSTEM 2", BTN_HOME, 1, 0, 0, {"MIDI LEARN", "SEQ MIDI OUT", "SAMPLES", ""}},       /* SYSTEM 2, and back) */
     {"SOUNDS", BTN_SAVE, 1, 0, 1, {"SLOT", "CATEGORY", "TYPE", "ACTION"}},
@@ -722,7 +740,7 @@ static volatile int32_t *knob_param(uint32_t pg, uint32_t k)   /* what KNOB k + 
                         &trk[sel].arp_gate;
     case PG_HOME: return k == 0u ? &trk[sel].level : k == 1u ? &trk[sel].cut : k == 2u ? &trk[sel].res : &trk[sel].fx;
     case PG_MIX1: return MIX[k];
-    case PG_MIX2: return k ? 0 : &trk[sel].pan;
+    case PG_MIX2: return k == 0u ? &trk[sel].pan : k == 1u ? &trk[sel].drive : 0;
     case PG_FMALGO: return k == 0u ? &trk[sel].fm_alg : k == 1u ? &trk[sel].fm_fb : k == 2u ? &fm_op :
                            &trk[sel].fmo[clamp(fm_op, 0, 5)][FO_FINE];
     case PG_FMOP: return &trk[sel].fmo[clamp(fm_op, 0, 5)][k == 0u ? FO_RATIO : k == 1u ? FO_LEVEL : k == 2u ? FO_ATK : FO_DEC];
@@ -831,6 +849,7 @@ static void knob_text(uint32_t pg, uint32_t k, char *s)   /* knob k's value on p
         return;
     case PG_HOME: case PG_MIX1: put_pc(s, v); return;
     case PG_MIX2:
+        if (k == 1u) { put_pc(s, v); return; }
         if (k) return;
         if (v == 64) { put_s(s, "C"); return; }
         put_u(put_s(s, v < 64 ? "L " : "R "), (uint32_t)(v < 64 ? 64 - v : v - 64));
