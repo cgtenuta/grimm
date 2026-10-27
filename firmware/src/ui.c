@@ -15,14 +15,14 @@
 
 #include "grimm_pixfont.h"
 
-#define UI_K RGB(0x0b, 0x0b, 0x0a)              /* the palette: black (the background), */
-#define UI_D RGB(0x26, 0x25, 0x1f)              /* dark */
-#define UI_M RGB(0x5e, 0x5b, 0x54)              /* mid */
-#define UI_L RGB(0xb8, 0xb4, 0xa9)              /* light */
-#define UI_W RGB(0xe8, 0xe4, 0xd8)              /* white */
-static const uint16_t UI_ACCENTS[4] = {RGB(0xc8, 0x32, 0x1e), RGB(0xd0, 0x8a, 0x1c), RGB(0x2f, 0x8f, 0x8a),
+#define UI_K RGB(0x0a, 0x06, 0x06)              /* the palette: black (the background), */
+#define UI_D RGB(0x1e, 0x10, 0x10)              /* dark */
+#define UI_M RGB(0x5f, 0x50, 0x4e)              /* mid */
+#define UI_L RGB(0xb4, 0xab, 0xa6)              /* light */
+#define UI_W RGB(0xd7, 0xd0, 0xc8)              /* white */
+static const uint16_t UI_ACCENTS[4] = {RGB(0xdc, 0x20, 0x18), RGB(0xd0, 0x8a, 0x1c), RGB(0x2f, 0x8f, 0x8a),
                                        RGB(0x7a, 0x4f, 0xb0)};   /* red (the default), amber, teal, violet (SYSTEM) */
-static uint16_t ui_acc = RGB(0xc8, 0x32, 0x1e); /* the accent */
+static uint16_t ui_acc = RGB(0xdc, 0x20, 0x18); /* the accent */
 #define UI_PIC_MS 40u                           /* the picture redrawn at most this often */
 #define UI_BAT_W 16                             /* the header's battery (and its tip) */
 #define UI_BOOT_MS 3000u                        /* the boot screen this long */
