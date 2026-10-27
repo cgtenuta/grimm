@@ -69,6 +69,9 @@ typedef struct {
                                                  * DECAY 0..99 (fm.c; a built-in PATCH's: fm_builtin) */
     volatile int32_t drive;                     /* MIXER 2: DRIVE 0..127, the track's distortion (grimm.c trk_drive; 0: off) */
 } track_t;
+#ifdef DEF_ENG
+#define TEST_DEFAULTS 1                         /* (a test build sets its own first source: no factory layout, store.c) */
+#endif
 #ifndef DEF_ENG
 #define DEF_ENG ENG_VA                          /* (the host tests set the tracks' first source) */
 #endif

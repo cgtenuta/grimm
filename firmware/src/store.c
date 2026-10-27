@@ -681,6 +681,21 @@ static void slot_from(uint8_t *d, const uint8_t *q, uint32_t tn)   /* a slot sav
     }
     for (k = 0; k < NT * LOCK_PK; k++) d[k] = 0;
 }
+/* A fresh FM-1 (no working project saved yet) starts as an EBM rig, one of each source: T1 DRUM (STOMP KIT), T2 MONO
+ * (ACID SAW), T3 DUAL (SYNC LEAD), T4 FM (IRON BELL: the BELL patch). A project already saved is never touched. */
+static const uint8_t *layout_rec[NT];           /* the sound each track got (0: none; grimm.c names them on HOME) */
+static void layout_factory(void)
+{
+    static const uint8_t WHO[NT][2] = {{CAT_DRUM, 1}, {CAT_MONO, 2}, {CAT_BASS, 3}, {CAT_BELL, 1}};   /* CATEGORY, number */
+    uint32_t t, i;
+    for (t = 0; t < NT; t++)
+        for (i = 0; i < SND_NFACT; i++)
+            if (SND_FACTORY[i][1] == WHO[t][0] && SND_FACTORY[i][2] == WHO[t][1]) {
+                snd_apply(SND_FACTORY[i], t);
+                layout_rec[t] = SND_FACTORY[i];
+                break;
+            }
+}
 static void store_boot(void)                    /* power-on: the newest good copy of the working project, the slots
                                                  * (an older version's: the next autosave writes them as OBJ_VER); the
                                                  * sounds made 64 B ones, if need be */
@@ -696,6 +711,10 @@ static void store_boot(void)                    /* power-on: the newest good cop
         obj_gen[OBJ_WORK] = st_rd32(w + 4);
         obj_crc[OBJ_WORK] = vs[0] == OBJ_VER ? st_crc(w + OBJ_HDR, WORK_PK) : 0;   /* (0: saved again) */
     }
+#ifndef TEST_DEFAULTS
+    else
+        layout_factory();                       /* (nothing saved: the EBM rig) */
+#endif
     slot_dirty = slot_lost = slot_up = 0;
     for (i = 0; i < SLS_N; i++) {               /* the stream's sectors: good, or bad (not erased, not good) */
         const uint8_t *f = sls_ok(i);

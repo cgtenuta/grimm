@@ -650,7 +650,7 @@ static char *put_ms(char *s, uint32_t q16)      /* a time, ms in Q16: "5 ms", "1
  * tap opens its first page, again the next (round); SYSTEM is HOME's, held */
 enum { PG_SOUND, PG_SOURCE, PG_ENV, PG_LFO, PG_SCALE, PG_CHORD, PG_SONG, PG_HOME, PG_MIX1, PG_MIX2, PG_SYSTEM,
        PG_SYS2, PG_SOUNDS, PG_PROJECTS, PG_ARP, PG_GRID, PG_PATTERN, PG_TAPE, PG_GRAIN, PG_DELAY, PG_SPACE, PG_PERFORM,
-       PG_TRACK, PG_FMALGO, PG_FMOP, NPAGE };   /* (the newer last: MIDI LEARN's links keep the pages' numbers they
+       PG_TRACK, PG_FMALGO, PG_FMOP, PG_FILT, NPAGE };   /* (the newer last: MIDI LEARN's links keep the pages' numbers they
                                                  * have; in their button's round by pg_key. TRACK: gone in step 25, its
                                                  * number kept: sys_load moves its links onto HOME) */
 typedef struct {
@@ -660,7 +660,7 @@ typedef struct {
     const char *knob[4];
 } page_t;
 static const page_t PAGES[NPAGE] = {
-    {"SOUND", BTN_EDIT, 1, 1, 1, {"", "", "", ""}},   /* (the source's names) */
+    {"OSC", BTN_EDIT, 1, 1, 1, {"", "", "", ""}},   /* (the source's names; EDIT's first page: the oscillators) */
     {"SOURCE", BTN_EDIT, 1, 1, 1, {"SOURCE", "LATCH", "", ""}},
     {"ENV", BTN_ENV, 1, 1, 1, {"ATTACK", "DECAY", "SUSTAIN", "RELEASE"}},
     {"LFO", BTN_LFO, 1, 1, 1, {"RATE", "DEPTH", "DESTINATION", "SHAPE"}},
@@ -670,7 +670,7 @@ static const page_t PAGES[NPAGE] = {
     {"HOME", BTN_HOME, 1, 1, 1, {"VOLUME", "CUTOFF", "RESONANCE", "FX"}},   /* (the track's: its LEVEL, its filter, its
                                                  * sends together; its sound's name in the header) */
     {"MIXER 1", BTN_HOME, 1, 1, 1, {"LEVEL", "DLY SEND", "REV SEND", "GRAIN SEND"}},
-    {"MIXER 2", BTN_HOME, 1, 1, 1, {"PAN", "DRIVE", "", ""}},
+    {"MIXER 2", BTN_HOME, 1, 1, 1, {"PAN", "", "", ""}},
     {"SYSTEM", BTN_HOME, 1, 0, 0, {"COLOUR", "MIDI CHANNEL", "TUNE", "SCREEN OFF"}},   /* (HOME held; HOME again: */
     {"SYSTEM 2", BTN_HOME, 1, 0, 0, {"MIDI LEARN", "SEQ MIDI OUT", "SAMPLES", ""}},       /* SYSTEM 2, and back) */
     {"SOUNDS", BTN_SAVE, 1, 0, 1, {"SLOT", "CATEGORY", "TYPE", "ACTION"}},
@@ -687,10 +687,11 @@ static const page_t PAGES[NPAGE] = {
     {"TRACK", BTN_HOME, 0, 1, 0, {"", "", "", ""}},   /* (gone: its knobs on HOME) */
     {"FM ALGO", BTN_EDIT, 1, 1, 1, {"ALGO", "FEEDBACK", "OP", "FINE"}},   /* (an FM track's: its own patch, fm.c) */
     {"FM OP", BTN_EDIT, 1, 1, 1, {"RATIO", "LEVEL", "ATTACK", "DECAY"}},  /* (the operator OP selects) */
+    {"FILT", BTN_EDIT, 1, 1, 1, {"CUTOFF", "RESONANCE", "DRIVE", ""}},   /* (the track's filter and its DRIVE, after OSC) */
 };
 static uint32_t pg_key(uint32_t p)              /* its place in its button's round */
 {
-    return p == PG_FMALGO ? PG_SOUND * 4u + 1u : p == PG_FMOP ? PG_SOUND * 4u + 2u : p * 4u;
+    return p == PG_FMALGO ? PG_SOUND * 4u + 1u : p == PG_FMOP ? PG_SOUND * 4u + 2u : p == PG_FILT ? PG_SOUND * 4u + 3u : p * 4u;
 }
 static int pg_on(uint32_t p)                    /* in its button's round now (FM ALGO, FM OP: an FM track's only) */
 {
@@ -740,7 +741,8 @@ static volatile int32_t *knob_param(uint32_t pg, uint32_t k)   /* what KNOB k + 
                         &trk[sel].arp_gate;
     case PG_HOME: return k == 0u ? &trk[sel].level : k == 1u ? &trk[sel].cut : k == 2u ? &trk[sel].res : &trk[sel].fx;
     case PG_MIX1: return MIX[k];
-    case PG_MIX2: return k == 0u ? &trk[sel].pan : k == 1u ? &trk[sel].drive : 0;
+    case PG_MIX2: return k == 0u ? &trk[sel].pan : 0;
+    case PG_FILT: return k == 0u ? &trk[sel].cut : k == 1u ? &trk[sel].res : k == 2u ? &trk[sel].drive : 0;
     case PG_FMALGO: return k == 0u ? &trk[sel].fm_alg : k == 1u ? &trk[sel].fm_fb : k == 2u ? &fm_op :
                            &trk[sel].fmo[clamp(fm_op, 0, 5)][FO_FINE];
     case PG_FMOP: return &trk[sel].fmo[clamp(fm_op, 0, 5)][k == 0u ? FO_RATIO : k == 1u ? FO_LEVEL : k == 2u ? FO_ATK : FO_DEC];
@@ -853,6 +855,12 @@ static void knob_text(uint32_t pg, uint32_t k, char *s)   /* knob k's value on p
         if (k) return;
         if (v == 64) { put_s(s, "C"); return; }
         put_u(put_s(s, v < 64 ? "L " : "R "), (uint32_t)(v < 64 ? 64 - v : v - 64));
+        return;
+    case PG_FILT:
+        if (k == 0u) {
+            if (v >= 127) put_s(s, "OPEN");
+            else put_s(put_u(s, CUTOFF_HZ[clamp(v, 0, 127)]), " Hz");
+        } else if (k < 3u) put_pc(s, v);
         return;
     case PG_TAPE: put_pc(s, v); return;
     case PG_GRAIN:
@@ -1410,6 +1418,8 @@ static void app_main(void)
     ima_init();                                 /* (samples.c: the decoder's tables, before samples_poll checks a slot) */
     seq_init();
     store_boot();                               /* the working project and the slots, as the FM-1 was left */
+    for (k = 0; k < NT; k++)
+        if (layout_rec[k]) brw_at(k, layout_rec[k]);   /* (a fresh FM-1: the EBM rig's sounds named on HOME) */
     pj_slot = slot_cur;
     sys_load();                                 /* (the settings: the octave, SYSTEM's; the accent before the boot
                                                  * screen) */

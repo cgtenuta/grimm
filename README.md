@@ -7,7 +7,7 @@
 
 ![GR!MM on the FM-1: the HOME screen](docs/screens/home.png)
 
-GR!MM turns the FM-1 into a four-track drone and atmosphere machine: seven sound sources, long dark effects, a 64-step sequencer per track, one-key chords, an arpeggiator, song mode and live performance tricks. Everything is drawn in a pixel-brutalist style, with an eye that watches the music and candles that burn with each track.
+GR!MM turns the FM-1 into a four-track drone and atmosphere machine: seven sound sources, long dark effects, a 64-step sequencer per track, one-key chords, an arpeggiator, song mode and live performance tricks. The screen is a utilitarian amber-on-black tracker layout: a tab strip on every page, a HOME with one row per track and a step strip, and dedicated pages for oscillator, filter, envelope, LFO and a sequencer page per track.
 
 Free and open source (GPL-3.0). Unofficial firmware, not made or endorsed by M-VAVE. **Install at your own risk.**
 
@@ -16,7 +16,7 @@ Free and open source (GPL-3.0). Unofficial firmware, not made or endorsed by M-V
 ## What's inside
 
 - **4 tracks**, 6 voices shared between them
-- **7 sources:** VA (analog-style, with supersaw), FM (6-operator, fully editable), SAMPLE (a sample played like a tape loop), DRUM (synthesized kit, the note picks the drum), MONO (bass and lead: saw / pulse, sub, four-pole filter), DUAL (two oscillators: mix, sync, ring, FM), PHASE (CZ-style phase distortion); a per-track DRIVE distortion on MIXER 2
+- **7 sources:** VA (analog-style, with supersaw), FM (6-operator, fully editable), SAMPLE (a sample played like a tape loop), DRUM (synthesized kit, the note picks the drum), MONO (bass and lead: saw / pulse, sub, four-pole filter), DUAL (two oscillators: mix, sync, ring, FM), PHASE (CZ-style phase distortion); a per-track DRIVE distortion on the FILT page
 - **46 factory sounds** in 9 categories (PAD, DRONE, BELL, DRUM, MONO, KEYS, BASS, OTHER, TEXTURE), plus 64 slots for your own, with names you give them in the editor
 - **4 factory samples** (URCHIN, LEAVE, NIKOLAI, M-SOFT; CC0) in the four sample slots, which you can replace with your own (6.6 s each)
 - **Effects:** TAPE (wow, saturation, hiss over the whole mix), GRAIN (a granular cloud with FREEZE), DELAY (tape echo) and SPACE (reverb up to ~32 s, and infinite)
@@ -52,7 +52,7 @@ Your sounds, slots A–D, settings and samples stay on the FM-1 when you update.
 ## Learn it
 
 - **[The manual](MANUAL.md)**: every button, page, knob and combo, in plain English.
-- **Quick start:** switch on, wait for the eye to open. Turn **ALGORITHM** to pick a track, turn **PRESETS** to pick a sound, play the keys. Hold **SEL** for one-key chords. Press **FX** for the effects.
+- **Quick start:** switch on. Turn **ALGORITHM** to pick a track, turn **PRESETS** to pick a sound, play the keys. Hold **SEL** for one-key chords. Press **FX** for the effects.
 
 ## The editor and the demo
 

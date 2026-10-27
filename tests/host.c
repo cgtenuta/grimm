@@ -183,7 +183,7 @@ static void app_main(void);
 /* the script: at t ms, keys down (bit k = key k, 0 = F3), a button edge, a MIDI message, an encoder turned. A script
  * file (the second argument) replaces it, a line each: "T keys MASK" (hex or decimal), "T btn ID" (a tap: let go the
  * next millisecond), "T down ID" / "T up ID" (held, let go), "T midi ST D1 D2", "T enc ID STEPS" (ENC_ id, + =
- * clockwise), "T end" */
+ * clockwise), "T shot" (a screenshot then), "T end" */
 typedef struct { uint32_t t, keys; int btn; uint8_t st, d1, d2; int enc, steps; } host_ev_t;
 #define CHORD1 (1u << 7 | 1u << 11 | 1u << 14)                  /* C E G (C4 .. G4 at OCTAVE +0) */
 #define CHORD2 (1u << 2 | 1u << 5 | 1u << 9)                   /* G Bb D (G3 .. D4) */
@@ -229,7 +229,10 @@ static const host_ev_t SCRIPT0[] = {
 };
 static const host_ev_t *script = SCRIPT0;
 static uint32_t script_n = sizeof SCRIPT0 / sizeof SCRIPT0[0], end_ms = 16000, frame_fps;
-static const uint32_t SHOT[] = {2500, 3500, 6000, 15500};   /* HOME; TAPE; GRAIN, FREEZE; the notes let go */
+static const uint32_t SHOT0[] = {2500, 3500, 6000, 15500};   /* HOME; TAPE; GRAIN, FREEZE; the notes let go */
+static uint32_t shot_t[64], shot_n;             /* a script file's own "T shot" times (else SHOT0) */
+#define SHOT (shot_n ? shot_t : SHOT0)
+#define SHOT_N (shot_n ? shot_n : (uint32_t)(sizeof SHOT0 / sizeof SHOT0[0]))
 
 static void read_script(const char *path)
 {
@@ -243,6 +246,7 @@ static void read_script(const char *path)
         unsigned a = 0, b = 0, c = 0;
         if (line[0] == '#' || sscanf(line, "%u %15s", &e.t, what) != 2) continue;
         if (!strcmp(what, "end")) { end_ms = e.t; continue; }
+        if (!strcmp(what, "shot")) { if (shot_n < 64u) shot_t[shot_n++] = e.t; continue; }
         if (!strcmp(what, "keys")) { sscanf(line, "%*u %*s %i", (int *)&e.keys); }
         else if (!strcmp(what, "btn")) { sscanf(line, "%*u %*s %d", &e.btn); }
         else if (!strcmp(what, "down")) { sscanf(line, "%*u %*s %d", &e.btn); e.btn |= 0x100; }
@@ -416,7 +420,7 @@ static void platform_poll(void)                 /* one call = one millisecond */
             snprintf(name, sizeof name, "%s-%05u.ppm", host_out, frame++);
             write_ppm_as(name);
         }
-    } else if (shot < sizeof SHOT / sizeof SHOT[0] && fm1_ms == SHOT[shot])
+    } else if (shot < SHOT_N && fm1_ms == SHOT[shot])
         write_ppm(SHOT[shot++]);
     if (fm1_ms >= end_ms) {
         write_wav();

@@ -75,7 +75,7 @@ static char *ui_3(char *s, uint32_t v) { s[0] = (char)('0' + v / 100u % 10u), s[
 static uint32_t ui_pc(int32_t v) { return ((uint32_t)clamp(v, 0, 127) * 100u + 63u) / 127u; }
 
 /* a source's short name (the HOME slabs: "T2 FM") */
-static const char *const SRC_CODE[NENG] = {"VA", "FM", "SA", "VO", "WH", "PH", "PD"};
+static const char *const SRC_CODE[NENG] = {"VA", "FM", "SA", "DR", "MO", "DU", "PH"};
 
 /* ---- the header */
 static char ui_hb[12], ui_hl[24], ui_hr[12];    /* the button, the left, the right */
@@ -171,15 +171,53 @@ static void ui_bat_draw(int32_t x, int32_t y)   /* the battery, 16 x 8: an outli
     for (i = 0; i <= l; i++)                    /* (level 0 .. 3: 1 .. 4 bars) */
         if (l || !(ui_bat & 1)) ui_rect(x + 2 + 3 * i, y + 2, 2, 4, l ? UI_L : ui_acc);
 }
+/* ---- the tab strip under the header (y 19 .. 27): the main pages and where this one is (the lit tab); on SEQ's pages
+ * the four tracks and the two pages (GRID, SET) instead: the track is the one ALGORITHM picked */
+static int32_t ui_tab_of(void)                  /* the main tab the page belongs to (-1: none of them) */
+{
+    switch (page) {
+    case PG_HOME: return 0;
+    case PG_SOUND: case PG_SOURCE: case PG_FMALGO: case PG_FMOP: return 1;
+    case PG_FILT: return 2;
+    case PG_ENV: return 3;
+    case PG_LFO: return 4;
+    case PG_MIX1: case PG_MIX2: return 5;
+    case PG_TAPE: case PG_GRAIN: case PG_DELAY: case PG_SPACE: case PG_PERFORM: return 6;
+    case PG_GRID: case PG_PATTERN: return 7;
+    default: return -1;
+    }
+}
+static void ui_tab(int32_t *x, const char *s, int on)
+{
+    int32_t w = 8 * ui_len(s) + 3;
+    if (on) ui_rect(*x, 19, w, 9, ui_acc);
+    ui_text(*x + 2, 20, s, 1, on ? UI_K : UI_M);
+    *x += w + 1;
+}
+static void ui_tabs_draw(void)
+{
+    static const char *const MAIN[8] = {"HOME", "OSC", "FILT", "ENV", "LFO", "MIX", "FX", "SEQ"};
+    int32_t x = 5, i, at = ui_tab_of();
+    if (page == PG_GRID || page == PG_PATTERN) {
+        static const char *const TK[4] = {"T1", "T2", "T3", "T4"};
+        for (i = 0; i < 4; i++) ui_tab(&x, TK[i], i == (int32_t)sel);
+        x += 12;
+        ui_tab(&x, "GRID", page == PG_GRID);
+        ui_tab(&x, "SET", page == PG_PATTERN);
+        return;
+    }
+    for (i = 0; i < 8; i++) ui_tab(&x, MAIN[i], i == at);
+}
 static void ui_head_draw(void)
 {
     int32_t bw = 10 + 8 * ui_len(ui_hb), bx = 3 + bw + 3;
-    ui_rect(3, 3, bw, 18, ui_acc);
-    ui_text(8, 8, ui_hb, 1, UI_K);
-    ui_rect(bx, 3, 237 - bx, 18, UI_D);
-    ui_text(bx + 5, 8, ui_hl, 1, UI_L);
-    ui_text(232 - 8 * ui_len(ui_hr), 8, ui_hr, 1, UI_M);
-    if (ui_bat >= 0) ui_bat_draw(232 - 8 * ui_len(ui_hr) - (ui_len(ui_hr) ? 4 : 0) - UI_BAT_W, 8);
+    ui_rect(3, 3, bw, 15, ui_acc);
+    ui_text(8, 6, ui_hb, 1, UI_K);
+    ui_rect(bx, 3, 237 - bx, 15, UI_D);
+    ui_text(bx + 5, 6, ui_hl, 1, UI_L);
+    ui_text(232 - 8 * ui_len(ui_hr), 6, ui_hr, 1, UI_M);
+    if (ui_bat >= 0) ui_bat_draw(232 - 8 * ui_len(ui_hr) - (ui_len(ui_hr) ? 4 : 0) - UI_BAT_W, 6);
+    ui_tabs_draw();
 }
 
 /* ---- the slabs: KNOB 1..4 of the page */
@@ -209,6 +247,14 @@ static void ui_squeeze(char *d, const char *s)  /* a text value on a slab: capit
     for (; *s && n < 6u; s++)
         if (*s != ' ') d[n++] = (char)(*s >= 'a' && *s <= 'z' ? *s - 32 : *s);
     d[n] = 0;
+}
+static char *ui_cut(char *d, int32_t v)          /* a track filter's CUTOFF: "OPEN", "824", "2.4K", "12K" */
+{
+    uint32_t hz = CUTOFF_HZ[clamp(v, 0, 127)];
+    if (v >= 127) return put_s(d, "OPEN");
+    if (hz < 1000u) return put_u(d, hz);
+    if (hz < 10000u) return put_s(put_x10(d, (hz + 50u) / 100u), "K");
+    return put_s(put_u(d, (hz + 500u) / 1000u), "K");
 }
 static char *ui_time(char *s, uint32_t q16)     /* ms (Q16): "5MS", "120MS", "1.5S", "12S" */
 {
@@ -372,15 +418,14 @@ static void ui_slab_make(uint32_t k, slab_t *S)
         if (k == 0u) fm_ratio_text(S->val, (uint32_t)clamp(fm_op, 0, 5));
         else ui_3(S->val, (uint32_t)clamp(v, 0, 99));
         return;
-    case PG_HOME:                               /* the four tracks (the knobs are the selected one's: VOLUME, CUTOFF,
-                                                 * RESONANCE, FX; the header says what they change): "T2 FM", its LEVEL;
-                                                 * the selected track in the accent; MUTE */
-        put_s(put_s(put_u(put_s(S->lab, "T"), k + 1u), " "), SRC_CODE[clamp(trk[k].eng, 0, NENG - 1)]);
-        S->fill = (uint8_t)((clamp(trk[k].level, 0, 127) * 8 + 63) / 127);
-        ui_3(S->val, ui_pc(trk[k].level));
-        if (trk_quiet >> k & 1u) { put_s(S->val, "MUTE"); S->dim = 1; }
-        S->acc = k == sel;
-        return;
+    case PG_HOME:                               /* the knobs as they turn the selected track: VOL (MUTE), CUT, RES, FX */
+        if (k == 0u && (trk_quiet >> sel & 1u)) { put_s(S->val, "MUTE"); S->dim = 1; return; }
+        if (k == 1u) { ui_cut(S->val, v); return; }
+        if (k == 3u) { ui_3(S->val, (uint32_t)clamp(v, 0, 200)); return; }
+        break;
+    case PG_FILT:
+        if (k == 0u) { ui_cut(S->val, v); return; }
+        break;
     case PG_MIX2:
         if (k == 1u) { ui_3(S->val, ui_pc(v)); return; }
         if (v == 64) put_s(S->val, "C");
@@ -471,145 +516,47 @@ static void ui_eye(int32_t x, int32_t y, int32_t k, int32_t dx, int32_t dy)
     }
 }
 
-/* ---- HOME's moving picture (Main), a frame every UI_ANIM_MS while it is shown and the screen lit, from the main loop:
- * what the audio ISR left in vis_pk, vis_lr (its peaks) and the notes on (their pitch). Only what changed is drawn.
- *   candles: LEVEL the most a flame can be (muted, LEVEL 0: out, a wisp of smoke); a silent track's burns low, a shape
- *   now and then; a sounding one's grows with its peak, dances (a row up or down) and flickers (three shapes, uneven)
- *   stars: the fog's pixels, a few at a time brighten to light and fade back; more of them the louder it is
- *   the eye: its iris goes towards the sound (left, right: the output's balance; up, down: high, low notes), a cell at
- *   a time; it blinks now and then, and at a sudden loud hit; silent ~4 s, it half-closes and drifts (dozing); the
- *   first sound wakes it with a blink */
-#define NSTAR 46u
-static uint8_t sk_x[NSTAR], sk_y[NSTAR], sk_b[NSTAR], sk_ph[NSTAR], sk_ok;   /* a star: where, M (else D), its sparkle's
-                                                 * frame (0: none) */
-static uint8_t cn_h[NT], cn_s[NT], cn_n[NT];    /* a candle: its flame's rows (0: out), shape, frames to its next shape */
-static int32_t ey_k = 4, ey_dx, ey_dy, ey_tx, ey_ty, ey_bl, ey_doze;   /* the eye: lids, iris, its target, the blink's
-                                                 * frame (0: none), dozing */
-static uint32_t an_rng = 0x2545F491u, an_e[NT], an_avg, an_n, an_sound_t, an_blink_t, an_next, an_drift_t;
-static uint32_t an_rnd(uint32_t n)
+/* ---- HOME (Main): the four tracks as rows. Each: its number, source and sound's name, its LEVEL as a bar, and the
+ * first sixteen steps of its pattern (the sixteen the step playing is in; stopped: the selected track's cursor's, the
+ * others' first), the step playing marked; the selected track in the accent (the knobs below are its), a muted one dim */
+#define HM_Y0 36
+#define HM_DY 30
+static void pic_home(void)
 {
-    an_rng ^= an_rng << 13, an_rng ^= an_rng >> 17, an_rng ^= an_rng << 5;
-    return an_rng % n;
-}
-static uint16_t sk_col(uint32_t i)              /* a star's colour now: D or M; sparkling, M, L, M */
-{
-    uint32_t p = sk_ph[i];
-    return !p ? (sk_b[i] ? UI_M : UI_D) : p >= 4u && p <= 9u ? UI_L : UI_M;
-}
-static void sk_init(void)                       /* the stars where Main has its fog (the concepts' random, seed 7) */
-{
-    uint32_t i;
-    ui_rnd_s = 7;
-    for (i = 0; i < NSTAR; i++) {
-        sk_x[i] = (uint8_t)ui_rnd(79), sk_y[i] = (uint8_t)ui_rnd(44);
-        sk_b[i] = ui_rnd(100) >= 65u;
-    }
-    sk_ok = 1;
-}
-static void pic_home(void)                      /* Main: the stars, the eye, a candle a track */
-{
-    static const char *const FLAME[3][4] = {{"..aa..", ".aaaa.", ".alla.", "..la.."}, {"...a..", "..aaa.", ".alla.", "..la.."},
-                                            {"..a...", ".aaa..", ".alla.", "..la.."}};
-    static const char *const BODY[9] = {"...m..", ".wlll.", ".wlll.", ".llll.", ".llll.", "lllll.", ".llll.", ".llll.",
-                                        "dddddd"};
-    uint32_t i;
-    int32_t t;
-    if (!sk_ok) sk_init();
-    for (i = 0; i < NSTAR; i++) ui_rect(sk_x[i] * 3, 27 + sk_y[i] * 3, 3, 3, sk_col(i));
-    ui_eye(80, 39, ey_k, ey_dx, ey_dy);
-    for (t = 0; t < (int32_t)NT; t++) {         /* four candles, 27 px apart, centred */
-        int32_t x = 43 + t * 45, y = 92, h = cn_h[t], r;
-        const char *f[4];
-        char lab[2] = {(char)('1' + t), 0};
-        if (!ui_in(x, y, 18, 52)) continue;
-        for (r = 0; r < 4; r++) f[r] = r >= 4 - h ? FLAME[cn_s[t] % 3u][r] : "......";
-        if (!h) f[1] = "..m...", f[2] = "...m..";   /* (out: a wisp of smoke) */
-        ui_sprite(x, y, 3, f, 4);
-        ui_sprite(x, y + 12, 3, BODY, 9);
-        ui_text(x + 5, y + 43, lab, 1, UI_M);
-    }
-}
-static void ui_pic_draw(void);
-static void ui_home_part(int32_t x, int32_t y, int32_t w, int32_t h) { ui_region(x, y, w, h, UI_K, ui_pic_draw); }
-static void ui_home_frame(int draw)             /* a frame of HOME's picture (draw: what changed, drawn) */
-{
-    static const int8_t BLINK[6] = {4, 2, 0, 0, 2, 3};   /* (a blink's lids, a frame each) */
-    uint32_t pk[NT], l = vis_lr[0], r = vis_lr[1], loud, t, i, sum = 0, n = 0, sound;
-    int32_t k, dx, dy;
-    an_n++;
-    for (t = 0; t < NT; t++) pk[t] = vis_pk[t], vis_pk[t] = 0;
-    vis_lr[0] = vis_lr[1] = 0;
-    loud = (l > r ? l : r) >> 7;                /* (0 .. 256: the output's peak, full scale) */
-    loud = loud > 256u ? 256u : loud;
-    for (i = 0; i < nlat && i < NV; i++) sum += lat_note[i], n++;
-    sound = loud > 2u || n;
-    if (!sk_ok) sk_init();
-
-    for (t = 0; t < NT; t++) {                  /* the candles */
-        uint32_t e = pk[t] / 96u, lv = trk[t].level <= 0 || (trk_quiet >> t & 1u) ? 0u : (ui_pc(trk[t].level) + 24u) / 25u;
-        uint32_t h, s = cn_s[t], lo = lv < 2u ? lv : 2u;
-        e = e > 256u ? 256u : e;
-        an_e[t] = e >= an_e[t] ? e : an_e[t] - (an_e[t] + 5u) / 6u;   /* (up at once, down over ~0.3 s) */
-        if (an_e[t] < 6u) h = lo;               /* (silent: low) */
-        else {
-            h = lo + ((lv - lo) * an_e[t] + 128u) / 256u;
-            if (!an_rnd(3) && h < lv) h++;      /* (the dance) */
-            else if (!an_rnd(4) && h > lo) h--;
+    int32_t t, k;
+    char nm[16], tx[24], *e;
+    for (t = 0; t < (int32_t)NT; t++) {
+        const seq_trk_t *S = &seq[t];
+        const seq_pat_t *P = &S->pat[clamp(S->cur, 0, SEQ_NPAT - 1)];
+        int32_t y = HM_Y0 + t * HM_DY, n = seq_steps(S), pos = S->pos, on = t == (int32_t)sel, q = (int32_t)(trk_quiet >> t & 1u);
+        int32_t pg = (pos >= 0 ? pos : on ? S->cursor : 0) / 16;
+        uint16_t tc = on ? UI_W : q ? UI_M : UI_L;
+        ui_rect(3, y, 234, 26, UI_D);
+        if (on) ui_rect(3, y, 3, 26, ui_acc);
+        nm[0] = (char)('1' + t), nm[1] = 0;
+        ui_text(10, y + 3, nm, 1, on ? ui_acc : UI_M);
+        ui_text(20, y + 3, ENGINES[clamp(trk[t].eng, 0, NENG - 1)]->name, 1, tc);
+        trk_sname((uint32_t)t, nm);
+        nm[11] = 0;
+        ui_text(20, y + 13, nm[0] ? nm : "-", 1, UI_M);
+        ui_rect(20, y + 23, 88, 2, UI_K);
+        ui_rect(20, y + 23, (clamp(trk[t].level, 0, 127) * 88 + 63) / 127, 2, q ? UI_M : on ? ui_acc : UI_L);
+        for (k = 0; k < 16; k++) {
+            int32_t st = pg * 16 + k, x = 118 + k * 7;
+            uint16_t c = st >= n ? UI_D : P->st[st].note ? (q ? UI_M : ui_acc) : UI_K;
+            ui_rect(x, y + 4, 5, 12, c);
+            if (!(k & 3)) ui_rect(x, y + 17, 5, 1, UI_M);
+            if (pos == st) ui_rect(x, y + 19, 5, 2, UI_W);
         }
-        if (!cn_n[t] || !--cn_n[t]) {           /* (a new shape, at uneven times: sounding often, silent seldom) */
-            s = (s + 1u + an_rnd(2)) % 3u;
-            cn_n[t] = (uint8_t)(an_e[t] >= 6u ? 1u + an_rnd(3) : 6u + an_rnd(14));
-        }
-        if (h != cn_h[t] || (s != cn_s[t] && h > 2u)) {
-            cn_h[t] = (uint8_t)h, cn_s[t] = (uint8_t)s;
-            if (draw) ui_home_part(43 + (int32_t)t * 45, 92, 18, 12);
-        }
-        cn_s[t] = (uint8_t)s;
     }
-
-    for (i = 0; i < NSTAR; i++)                 /* the stars: the sparkling ones on; new ones (louder: more) */
-        if (sk_ph[i]) {
-            uint16_t c = sk_col(i);
-            sk_ph[i] = sk_ph[i] >= 12u ? 0u : (uint8_t)(sk_ph[i] + 1u);
-            if (draw && sk_col(i) != c) ui_home_part(sk_x[i] * 3, 27 + sk_y[i] * 3, 3, 3);
-        }
-    for (t = 0; t < 1u + loud / 96u; t++)
-        if (an_rnd(64) < 3u + loud / 12u) {
-            i = an_rnd(NSTAR);
-            if (!sk_ph[i]) sk_ph[i] = 1;
-        }
-
-    if (sound) {                                /* the eye: awake (the first sound: a blink), or dozing */
-        if (ey_doze) ey_doze = 0, ey_bl = 1;
-        an_sound_t = fm1_ms;
-    } else if (fm1_ms - an_sound_t > 4000u)
-        ey_doze = 1;
-    if (!ey_doze) {
-        ey_tx = l + r > 64u ? ((int32_t)r - (int32_t)l) * 3 / (int32_t)(l + r) : 0;   /* (the balance: -3 .. 3) */
-        ey_ty = !n ? 0 : sum / n >= 72u ? -1 : sum / n < 50u ? 1 : 0;   /* (high notes up, low down) */
-        if (loud > 48u && loud > 3u * an_avg + 24u && fm1_ms - an_blink_t > 600u) ey_bl = 1;   /* (a sudden hit) */
-    } else if (fm1_ms >= an_drift_t) {          /* (dozing: somewhere else now and then) */
-        ey_tx = (int32_t)an_rnd(5) - 2, ey_ty = (int32_t)an_rnd(2);
-        an_drift_t = fm1_ms + 1200u + an_rnd(1500);
-    }
-    an_avg = (an_avg * 7u + loud) / 8u;
-    if (!ey_bl && fm1_ms >= an_next) ey_bl = 1; /* (now and then) */
-    if (ey_bl) {
-        if (ey_bl == 1) an_next = fm1_ms + 2500u + an_rnd(5000);
-        an_blink_t = fm1_ms;
-        k = ey_bl < 6 ? BLINK[ey_bl] : ey_doze ? 2 : 4;
-        ey_bl = ey_bl >= 6 ? 0 : ey_bl + 1;
-    } else
-        k = ey_doze ? (ey_k > 2 && !(an_n % 9u) ? ey_k - 1 : ey_k < 2 ? ey_k + 1 : ey_k) : ey_k < 4 ? ey_k + 1 : 4;   /* (dozing:
-                                                 * the lids down slowly) */
-    dx = ey_dx, dy = ey_dy;
-    if (!(an_n % (ey_doze ? 5u : 2u))) {        /* (the iris: a cell at a time) */
-        dx += ey_tx > dx ? 1 : ey_tx < dx ? -1 : 0;
-        dy += ey_ty > dy ? 1 : ey_ty < dy ? -1 : 0;
-    }
-    if (k != ey_k || dx != ey_dx || dy != ey_dy) {
-        ey_k = k, ey_dx = dx, ey_dy = dy;
-        if (draw) ui_home_part(80, 39, 80, 40);
+    {
+        const seq_trk_t *S = &seq[sel];
+        int32_t n = seq_steps(S);
+        e = put_s(put_u(put_s(tx, "T"), sel + 1u), "  ");
+        if (S->pos >= 0) e = put_u(put_s(put_u(put_s(e, "STEP "), (uint32_t)S->pos + 1u), "/"), (uint32_t)n);
+        else e = put_u(put_s(e, "STOPPED  STEPS "), (uint32_t)n);
+        if (n > 16) put_u(put_s(put_u(put_s(e, "  PAGE "), (uint32_t)((S->pos >= 0 ? S->pos : S->cursor) / 16) + 1u), "/"), (uint32_t)(n + 15) / 16u);
+        ui_text(8, 157, tx, 1, UI_M);
     }
 }
 static int32_t ui_oct;                          /* (the octave: SEL's keys) */
@@ -997,10 +944,26 @@ static void pic_env(void)                       /* Env: the shape of the track's
     ui_cell(wa - 1, 3, ui_acc), ui_cell(wa, 3, ui_acc), ui_cell(wa - 1, 4, ui_acc), ui_cell(wa, 4, ui_acc);
 }
 
+static void pic_filt(void)                      /* the track's low-pass: its curve bends at CUTOFF, RESONANCE the bump there */
+{
+    int32_t c = clamp(trk[sel].cut, 0, 127), r = clamp(trk[sel].res, 0, 127), cx = c * 53 / 127, x, y;
+    char s[12];
+    ui_cut(s, c);
+    ui_caption("LOW-PASS", s);
+    for (x = 0; x < 54; x++) {
+        int32_t h = 20, d = x - cx;
+        if (c < 127) {
+            if (d > 0) h -= d * 3;
+            if (d > -4 && d < 4) h += r * 9 / 127 * (4 - (d < 0 ? -d : d)) / 4;
+        }
+        h = clamp(h, 0, 29);
+        for (y = 29 - h; y < 30; y++) ui_cell(x, y, y == 29 - h ? ui_acc : UI_D);
+    }
+}
 static void pic_mix(void)                       /* FxTrack: the four tracks' columns, LEVEL and the sends (MIXER 2: PAN) */
 {
     int32_t t, m, j;
-    ui_caption(page == PG_MIX1 ? "LEVEL DLY REV GRAIN" : "PAN  DRIVE", 0);
+    ui_caption(page == PG_MIX1 ? "LEVEL DLY REV GRAIN" : "PAN", 0);
     for (t = 0; t < (int32_t)NT; t++) {
         int32_t x0 = PX0 + t * 54 + 4;
         char lab[3] = {'T', (char)('1' + t), 0};
@@ -1015,8 +978,6 @@ static void pic_mix(void)                       /* FxTrack: the four tracks' col
             int32_t pp = (clamp(trk[t].pan, 0, 127) * 6 + 63) / 127;
             for (j = 0; j < 7; j++)
                 ui_rect(x0 + j * 7, 80, 6, 20, j == pp ? UI_L : j == 3 ? UI_M : UI_D);
-            ui_rect(x0, 112, 49, 8, UI_D);
-            ui_rect(x0, 112, clamp(trk[t].drive, 0, 127) * 49 / 127, 8, UI_L);   /* DRIVE: a bar */
         }
         ui_text(x0 + 14, 145, lab, 1, t == (int32_t)sel ? ui_acc : UI_M);
     }
@@ -1510,6 +1471,7 @@ static void ui_pic_draw(void)
         }
     case PG_SOURCE: pic_source(); return;
     case PG_ENV: pic_env(); return;
+    case PG_FILT: pic_filt(); return;
     case PG_MIX1: case PG_MIX2: pic_mix(); return;
     case PG_TAPE: pic_tape(); return;
     case PG_GRAIN: pic_grain(); return;
@@ -1546,6 +1508,14 @@ static uint32_t ui_pic_key(void)
     UI_H(trk[sel].latch), UI_H(trk[sel].chord), UI_H(trk[sel].ch_type), UI_H(trk[sel].ch_voice), UI_H(sc_root), UI_H(sc_scale);
     if (PAGES[page].btn == BTN_SEL) UI_H(ch_last), UI_H(ui_oct);
     UI_H(trk_quiet);
+    if (page == PG_HOME) {                      /* the rows: each track's steps, the step playing, its sound's name */
+        for (t = 0; t < NT; t++) {
+            const seq_trk_t *S = &seq[t];
+            const seq_pat_t *P = &S->pat[clamp(S->cur, 0, SEQ_NPAT - 1)];
+            UI_H(S->pos), UI_H(S->steps), UI_H(S->cur), UI_H(S->cursor), UI_H(brw_pos[t]), UI_H(trk_nm[t][0]);
+            for (k = 0; k < SEQ_N; k++) UI_H(P->st[k].note);
+        }
+    }
     if (page == PG_PERFORM) UI_H(pf_held), UI_H(ge_freeze);
     if (page == PG_SONG) {                      /* the chain, the step playing, the slots' notes */
         UI_H(song_at), UI_H(song_left), UI_H(song_rec), UI_H(song_ri);
@@ -1627,7 +1597,6 @@ static void ui_update(int32_t oct)
     static int32_t shown_bat = -2;
     static char hb[12], hl[24], hr[12];
     uint32_t k, key, st;
-    static uint32_t an_t;
     int all = page != shown_page || ui_acc != shown_acc;   /* (a new COLOUR: everything again) */
     if (fm1_ms - ui_boot_t < UI_BOOT_MS) {      /* (the boot screen still) */
         ui_boot_frame();
@@ -1643,21 +1612,16 @@ static void ui_update(int32_t oct)
     ui_head_text();
     if (all || !same(hb, ui_hb) || !same(hl, ui_hl) || !same(hr, ui_hr) || ui_bat != shown_bat) {
         put_s(hb, ui_hb), put_s(hl, ui_hl), put_s(hr, ui_hr), shown_bat = ui_bat;
-        ui_region(0, 0, 240, 24, UI_K, ui_head_draw);
+        ui_region(0, 0, 240, 31, UI_K, ui_head_draw);
     }
     ui_oct = oct;
-    if (page == PG_HOME && fm1_ms - an_t >= UI_ANIM_MS) {   /* HOME: a frame of its moving picture (what moved drawn,
-                                                 * unless all of it is about to be) */
-        an_t = fm1_ms;
-        ui_home_frame(!all);
-    }
     key = ui_pic_key();
     if (key != pic_key && (all || fm1_ms - pic_t >= UI_PIC_MS)) {
         pic_key = key;
         pic_t = fm1_ms;
         stat_key = 0xFFFFFFFFu;
         dot_shown = page == PG_LFO ? lfo_dot() : 0xFFFFFFFFu;
-        ui_region(0, 24, 240, 141, UI_K, ui_pic_draw);
+        ui_region(0, 31, 240, 134, UI_K, ui_pic_draw);
     }
     if (page == PG_LFO && lfo_dot() != dot_shown) {   /* LFO: the dot moved: its two columns where it was, and where
                                                  * it is, drawn again */

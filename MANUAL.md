@@ -38,7 +38,7 @@ GR!MM has **four tracks (T1–T4)**. Each track plays one sound, has its own seq
 
 ## 2. HOME
 
-The main screen: the eye, a candle per track (its flame follows the track's volume and what it's playing) and the four tracks along the bottom. The header shows the selected track and its sound (the factory or saved sound you loaded, by name), with the tempo and the battery level on the right.
+The main screen: one row per track (T1 DRUM, T2 MONO, T3 DUAL, T4 FM on a fresh project), each with its sound name, a 16-step strip showing the playing pattern and a level meter. The header shows the selected track and its sound, with the tempo and battery on the right. Under the header a **tab strip** shows every page group and highlights where you are, so you always know which page you're on; the SEQ tab shows T1–T4 sub-tabs (turn ALGORITHM to switch track).
 
 ![HOME](docs/screens/home.png)
 
@@ -56,13 +56,13 @@ Press **HOME** again for the mixer pages:
 | Page | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
 |---|---|---|---|---|
 | MIXER 1 | LEVEL | DLY SEND | REV SEND | GRAIN SEND |
-| MIXER 2 | PAN | DRIVE | | |
+| MIXER 2 | PAN | | | |
 
 ---
 
 ## 3. Sounds: EDIT
 
-**EDIT** opens the selected track's sound. Pages: **SOUND → SOURCE** (FM tracks have two more, see below).
+**EDIT** opens the selected track's sound. Pages: **OSC → FILT → SOURCE** (FM tracks have two more, see below).
 
 ### SOURCE page
 
@@ -93,13 +93,13 @@ Press **HOME** again for the mixer pages:
 
 **DUAL** modes: MIX adds oscillator 2 (a few cents apart in unison); SYNC restarts oscillator 2 with oscillator 1 (sweep OSC 2 for the classic sound; a little aliased, by design); RING multiplies the two; FM lets oscillator 2 bend a sine, the index up to 3 cycles. AMOUNT is oscillator 2's level (MIX), the share of the effect (SYNC, RING) or the FM index.
 
-**MIXER 2's DRIVE** (per track, 0 = off) distorts the track after its filter: soft clipping that turns hard as it rises, then a wavefolder over the last third. Use it on the bass, or on a whole drum track.
+**FILT's DRIVE** (per track, 0 = off) distorts the track after its filter: soft clipping that turns hard as it rises, then a wavefolder over the last third. Use it on the bass, or on a whole drum track.
 
 The four sample slots come with GR!MM's factory samples: **1 URCHIN, 2 LEAVE, 3 NIKOLAI, 4 M-SOFT**. Replace them with your own from the [editor](#15-the-editor) (see also [Good to know](#14-good-to-know)).
 
 ### FM editor (FM tracks only)
 
-On an FM track, EDIT steps **SOUND → FM ALGO → FM OP → SOURCE**.
+On an FM track, EDIT steps **OSC → FM ALGO → FM OP → FILT → SOURCE**.
 
 | Page | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
 |---|---|---|---|---|
