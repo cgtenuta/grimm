@@ -1,6 +1,6 @@
 # Prebuilt firmware
 
-`grimm-ebm-1.1.fwsc` is the GR!MM EBM build (identity FM-1_966): DRUM, MONO and DUAL engines, per-track DRIVE and the redesigned tab-strip UI in the industrial red-on-black theme (HOME rows, OSC/FILT/ENV/LFO pages, T1–T4 sequencer tabs),
+`grimm-ebm-1.1.fwsc` is the GR!MM EBM build (identity FM-1_966): DRUM, MONO and DUAL engines, per-track DRIVE and the redesigned tab-strip UI in the utilitarian amber-on-black theme (HOME rows, OSC/FILT/ENV/LFO pages, T1–T4 sequencer tabs),
 from the sources in this repository at the commit that added this file.
 
 - **Untested on hardware.** It passed the device build's static checks and the host tests only. Tune by ear.
@@ -12,4 +12,4 @@ from the sources in this repository at the commit that added this file.
   rebuilt from these three files matches the official one byte for byte.
 - To go back to the official firmware, use the M-VAVE workbench ("return to V15").
 
-SHA-256: `7fb2a63156691501e4e675bf0b1883cf9992c58cc4763bcc9e5c1b27c7108a1a`
+SHA-256: `7d129102d2a7d1a9ff21ad9ae9219c1130638b5ba10793773c2904e28938223e`

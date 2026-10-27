@@ -794,7 +794,7 @@ static const char *lfo_dest_name(int32_t d)     /* DESTINATION: its name (a knob
     d = clamp(d, 0, NLFODEST - 1);
     return d >= LD_K1 && d <= LD_K4 ? knob_name(PG_SOUND, (uint32_t)(d - LD_K1)) : LFO_DEST_NAME[d];
 }
-static const char *const COL_NAME[4] = {"RED", "AMBER", "TEAL", "VIOLET"};   /* SYSTEM: COLOUR */
+static const char *const COL_NAME[4] = {"AMBER", "RED", "TEAL", "VIOLET"};   /* SYSTEM: COLOUR */
 static const char *const SCR_NAME[5] = {"NEVER", "1 MIN", "5 MIN", "15 MIN", "30 MIN"};   /* SCREEN OFF */
 static const char *const LEARN_NAME[3] = {"OFF", "LEARN", "CLEAR ALL"};   /* SYSTEM 2: MIDI LEARN */
 static char *mch_text(char *s, int32_t v)       /* MIDI CHANNEL: "1-4" .. "13-16", "ALL > SEL" */
